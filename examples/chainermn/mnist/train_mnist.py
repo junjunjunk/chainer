@@ -47,6 +47,13 @@ def main():
                         help='Resume the training from snapshot')
     parser.add_argument('--unit', '-u', type=int, default=1000,
                         help='Number of units')
+
+    parser.add_argument('--benchmark', action='store_true',
+                        help='benchmark mode')
+    
+    parser.add_argument('--benchmark-iteration', type=int, default=500,
+                        help='the number of iterations when using benchmark mode')
+
     args = parser.parse_args()
 
     # Prepare ChainerMN communicator.
@@ -103,8 +110,13 @@ def main():
     test_iter = chainer.iterators.SerialIterator(test, args.batchsize,
                                                  repeat=False, shuffle=False)
 
+    if args.benchmark:
+        stop_trigger = (args.benchmark_iteration, 'iteration')
+    else:
+        stop_trigger = (args.epoch, 'epoch')
+
     updater = training.StandardUpdater(train_iter, optimizer, device=device)
-    trainer = training.Trainer(updater, (args.epoch, 'epoch'), out=args.out)
+    trainer = training.Trainer(updater, stop_trigger, out=args.out)
 
     # Create a multi node evaluator from a standard Chainer evaluator.
     evaluator = extensions.Evaluator(test_iter, model, device=device)
